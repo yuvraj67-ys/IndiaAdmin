@@ -1,119 +1,141 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-export default function VehiclesPage() {
-  const [vehicles, setVehicles] = useState([]);
-  const[search, setSearch] = useState('');
-  const [filter, setFilter] = useState('All'); // All, bike, car, secret
-
-  useEffect(() => { fetchVehicles() },[]);
-
-  const fetchVehicles = async () => {
-    const res = await fetch('/api/vehicles');
-    const data = await res.json();
-    if (data.success) setVehicles(data.data);
-  };
-
-  const quickToggle = async (id, field, currentValue) => {
-    await fetch(`/api/vehicles/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({[field]: !currentValue })
-    });
-    fetchVehicles();
-  };
-
-  const downloadBackup = () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(vehicles, null, 2));
-    const dlAnchorElem = document.createElement('a');
-    dlAnchorElem.setAttribute("href", dataStr);
-    dlAnchorElem.setAttribute("download", `indian_bike_backup_${new Date().toISOString().split('T')[0]}.json`);
-    dlAnchorElem.click();
-  };
-
-  const filtered = vehicles.filter(v => {
-    const matchesSearch = v.name.toLowerCase().includes(search.toLowerCase()) || v.cheatCode.includes(search);
-    const matchesFilter = filter === 'All' || v.category === filter;
-    return matchesSearch && matchesFilter;
+export default function AddVehicle() {
+  const router = useRouter();
+  const [form, setForm] = useState({ 
+    name: '', 
+    cheatCode: '', 
+    category: 'bike', 
+    isPremium: false, 
+    isVisible: true 
   });
+  const [image, setImage] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  // Handle Image Selection and Convert to Base64
+  const handleImage = (e) => {
+    const file = e.target.files[0];
+    if(file){
+        const reader = new FileReader();
+        reader.onloadend = () => setImage(reader.result);
+        reader.readAsDataURL(file);
+    }
+  };
+
+  // Submit Form Data
+  const submit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setErrorMsg('');
+    
+    try {
+        let imageUrl = '';
+        
+        // 1. Upload Image to ImgBB (Agar image select ki hai toh)
+        if(image) {
+            const imgRes = await fetch('/api/upload', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image })
+            });
+            const imgData = await imgRes.json();
+            
+            if(!imgData.success) {
+              throw new Error("Image Upload Failed: " + (imgData.error || 'Unknown Error'));
+            }
+            imageUrl = imgData.url;
+        }
+
+        // 2. Save Vehicle to Firebase Database
+        const dbRes = await fetch('/api/vehicles', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...form, imageUrl: imageUrl })
+        });
+        const dbData = await dbRes.json();
+        
+        if(!dbData.success) {
+          throw new Error("Database Save Failed: " + (dbData.error || 'Unknown Error'));
+        }
+
+        alert("✅ Vehicle Successfully Added!");
+        router.push('/dashboard/vehicles');
+        
+    } catch (err) {
+        console.error(err);
+        setErrorMsg(err.message);
+    } finally {
+        setLoading(false);
+    }
+  };
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-extrabold text-gray-800">Manage Vehicles</h1>
-        <div className="flex gap-3">
-          <button onClick={downloadBackup} className="bg-gray-800 text-white px-4 py-2 rounded-xl font-bold hover:bg-gray-900 transition-colors shadow-md">
-            📥 Backup JSON
-          </button>
-          <Link href="/dashboard/vehicles/add" className="bg-orange-500 text-white px-4 py-2 rounded-xl font-bold hover:bg-orange-600 transition-colors shadow-md shadow-orange-200">
-            ➕ Add New
-          </Link>
+    <div className="p-4 md:p-8 max-w-2xl mx-auto animate-fade-in">
+      <Link href="/dashboard/vehicles" className="text-orange-500 font-bold mb-6 inline-block hover:underline flex items-center gap-2">
+        <span>←</span> Back to Vehicles List
+      </Link>
+      
+      <h1 className="text-3xl font-extrabold mb-8 text-gray-800">➕ Add New Vehicle</h1>
+      
+      {errorMsg && (
+        <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl mb-6 font-bold">
+          ❌ {errorMsg}
         </div>
-      </div>
+      )}
 
-      <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6 flex flex-col md:flex-row gap-4">
-        <input type="text" placeholder="🔍 Search by name or code..." value={search} onChange={e=>setSearch(e.target.value)} 
-          className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-orange-500" />
+      <form onSubmit={submit} className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-5">
         
-        <select value={filter} onChange={e=>setFilter(e.target.value)} className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:outline-none font-bold text-gray-700">
-          <option value="All">All Categories</option>
-          <option value="bike">🏍️ Bikes</option>
-          <option value="car">🚗 Cars</option>
-          <option value="secret">🔒 Secrets</option>
-        </select>
-      </div>
+        {/* Image Upload Section */}
+        <div className="flex flex-col gap-2">
+          <label className="font-bold text-gray-700 text-lg">Vehicle Image (Required)</label>
+          <input type="file" accept="image/*" onChange={handleImage} required className="border-2 border-gray-200 p-3 rounded-xl bg-gray-50 focus:border-orange-500 outline-none transition-colors" />
+          {image && <img src={image} className="w-32 h-32 object-cover rounded-xl mt-3 border-2 border-gray-200 shadow-sm" alt="Preview" />}
+        </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-gray-50 text-gray-500 text-sm uppercase tracking-wider">
-              <th className="p-4 border-b font-semibold">Vehicle & Image</th>
-              <th className="p-4 border-b font-semibold">Cheat Code</th>
-              <th className="p-4 border-b font-semibold">Category</th>
-              <th className="p-4 border-b font-semibold">Quick Status</th>
-              <th className="p-4 border-b font-semibold text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {filtered.map(v => (
-              <tr key={v.id} className="hover:bg-gray-50 transition-colors">
-                <td className="p-4 flex items-center gap-4">
-                  <img src={v.imageUrl || 'https://via.placeholder.com/50'} className="w-14 h-14 rounded-xl object-cover shadow-sm" />
-                  <span className="font-bold text-gray-800">{v.name}</span>
-                </td>
-                <td className="p-4">
-                  <span className="font-mono bg-orange-50 text-orange-700 px-3 py-1.5 rounded-lg border border-orange-100 font-bold">
-                    {v.cheatCode}
-                  </span>
-                </td>
-                <td className="p-4 capitalize text-gray-600 font-medium">{v.category}</td>
-                <td className="p-4 flex gap-2">
-                  <button onClick={() => quickToggle(v.id, 'isVisible', v.isVisible)} 
-                    className={`text-xs px-3 py-1.5 rounded-lg font-bold border transition-colors ${v.isVisible ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
-                    {v.isVisible ? '👁 VISIBLE' : '🚫 HIDDEN'}
-                  </button>
-                  <button onClick={() => quickToggle(v.id, 'isPremium', v.isPremium)} 
-                    className={`text-xs px-3 py-1.5 rounded-lg font-bold border transition-colors ${v.isPremium ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
-                    {v.isPremium ? '⭐ PREMIUM' : 'FREE'}
-                  </button>
-                </td>
-                <td className="p-4 text-right">
-                  <button onClick={async () => {
-                    if(confirm(`Delete ${v.name}?`)) {
-                      await fetch(`/api/vehicles/${v.id}`, {method: 'DELETE'});
-                      fetchVehicles();
-                    }
-                  }} className="text-red-500 hover:bg-red-50 p-2 rounded-lg font-bold transition-colors">
-                    🗑️ Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {filtered.length === 0 && <div className="p-8 text-center text-gray-500">No vehicles found.</div>}
-      </div>
+        {/* Vehicle Name */}
+        <div className="flex flex-col gap-2">
+          <label className="font-bold text-gray-700 text-lg">Vehicle Name</label>
+          <input type="text" placeholder="e.g. Ninja H2R" required value={form.name} onChange={e=>setForm({...form, name: e.target.value})} className="border-2 border-gray-200 p-4 rounded-xl bg-gray-50 focus:border-orange-500 outline-none transition-colors font-medium text-gray-800" />
+        </div>
+        
+        {/* Cheat Code */}
+        <div className="flex flex-col gap-2">
+          <label className="font-bold text-gray-700 text-lg">Cheat Code</label>
+          <input type="text" placeholder="e.g. 3000" required value={form.cheatCode} onChange={e=>setForm({...form, cheatCode: e.target.value})} className="border-2 border-gray-200 p-4 rounded-xl bg-gray-50 focus:border-orange-500 outline-none transition-colors font-mono text-xl text-orange-600 font-bold tracking-wider" />
+        </div>
+        
+        {/* Category */}
+        <div className="flex flex-col gap-2">
+          <label className="font-bold text-gray-700 text-lg">Category</label>
+          <select value={form.category} onChange={e=>setForm({...form, category: e.target.value})} className="border-2 border-gray-200 p-4 rounded-xl bg-gray-50 focus:border-orange-500 outline-none transition-colors font-bold text-gray-700">
+            <option value="bike">🏍️ Bike</option>
+            <option value="car">🚗 Car</option>
+            <option value="secret">🔒 Secret</option>
+          </select>
+        </div>
+        
+        {/* Visibility & Premium Toggles */}
+        <div className="flex flex-col md:flex-row gap-4 mt-2">
+          <label className="flex items-center justify-between p-4 bg-purple-50 border border-purple-100 rounded-xl cursor-pointer hover:bg-purple-100 transition-colors flex-1">
+            <span className="font-bold text-purple-800">⭐ Is Premium?</span>
+            <input type="checkbox" className="w-6 h-6 accent-purple-600" checked={form.isPremium} onChange={e=>setForm({...form, isPremium: e.target.checked})} />
+          </label>
+          
+          <label className="flex items-center justify-between p-4 bg-green-50 border border-green-100 rounded-xl cursor-pointer hover:bg-green-100 transition-colors flex-1">
+            <span className="font-bold text-green-800">👁 Is Visible?</span>
+            <input type="checkbox" className="w-6 h-6 accent-green-600" checked={form.isVisible} onChange={e=>setForm({...form, isVisible: e.target.checked})} />
+          </label>
+        </div>
+        
+        {/* Submit Button */}
+        <button type="submit" disabled={loading} className="w-full bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-lg py-4 rounded-xl mt-6 shadow-lg shadow-orange-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+          {loading ? '⏳ Uploading & Saving...' : '🚀 SAVE VEHICLE'}
+        </button>
+      </form>
     </div>
   );
 }
