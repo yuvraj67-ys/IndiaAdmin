@@ -91,6 +91,7 @@ export default function EditVehicle({ params }) {
           <option value="bike">🏍️ Bike</option>
           <option value="car">🚗 Car</option>
           <option value="secret">🔒 Secret</option>
+          <option value="truck">🚛 Truck</option>
         </select>
         
         <div className="flex gap-4 mt-4">
