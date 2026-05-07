@@ -115,6 +115,7 @@ export default function AddVehicle() {
             <option value="bike">🏍️ Bike</option>
             <option value="car">🚗 Car</option>
             <option value="secret">🔒 Secret</option>
+            <option value="truck">🚛 Truck</option>
           </select>
         </div>
         
