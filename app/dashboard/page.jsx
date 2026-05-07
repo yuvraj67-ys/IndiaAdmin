@@ -17,6 +17,7 @@ export default function DashboardHome() {
   const premium = vehicles.filter(v => v.isPremium).length;
   const bikes = vehicles.filter(v => v.category === 'bike').length;
   const cars = vehicles.filter(v => v.category === 'car').length;
+  const trucks = vehicles.filter(v => v.category === 'truck').length;
   const secrets = vehicles.filter(v => v.category === 'secret').length;
 
   if(loading) return <div className="flex justify-center items-center h-full text-orange-500 font-bold">Loading Data...</div>;
