@@ -87,7 +87,7 @@ export default function VehiclesPage() {
                   </span>
                 </td>
                 <td className="p-4 capitalize text-gray-600 font-medium">
-                  {v.category === 'bike' ? '🏍️ Bike' : v.category === 'car' ? '🚗 Car' : '🔒 Secret'}
+                  {v.category === 'bike' ? '🏍️ Bike' : v.category === 'car' ? '🚗 Car' : v.category === 'truck' ? '🚛 Truck' : '🔒 Secret'}
                 </td>
                 <td className="p-4 flex gap-2">
                   <button onClick={() => quickToggle(v.id, 'isVisible', v.isVisible)} 
