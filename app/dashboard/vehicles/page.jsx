@@ -58,6 +58,7 @@ export default function VehiclesPage() {
           <option value="bike">🏍️ Bikes</option>
           <option value="car">🚗 Cars</option>
           <option value="secret">🔒 Secrets</option>
+          <option value="truck">🚛 Truck</option>
         </select>
       </div>
 
