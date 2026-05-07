@@ -17,7 +17,7 @@ export default function DashboardHome() {
   const premium = vehicles.filter(v => v.isPremium).length;
   const bikes = vehicles.filter(v => v.category === 'bike').length;
   const cars = vehicles.filter(v => v.category === 'car').length;
-  const trucks = vehicles.filter(v => v.category === 'truck').length;
+  const trucks = vehicles.filter(v => v.category === 'truck').length; // ✅ Truck calculation added
   const secrets = vehicles.filter(v => v.category === 'secret').length;
 
   if(loading) return <div className="flex justify-center items-center h-full text-orange-500 font-bold">Loading Data...</div>;
@@ -27,28 +27,44 @@ export default function DashboardHome() {
       <h1 className="text-3xl font-extrabold text-gray-800 mb-2">Overview</h1>
       <p className="text-gray-500 mb-8">Welcome back! Here is what's happening with your app today.</p>
 
-      {/* Premium Stat Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      {/* ✅ FIX: Changed grid-cols-4 to grid-cols-5 to fit the new Truck card */}
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+        
+        {/* Total Vehicles Card */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden">
-          <div className="absolute -right-4 -top-4 text-6xl opacity-10">🏍️</div>
-          <p className="text-sm font-bold text-gray-400">TOTAL VEHICLES</p>
+          <div className="absolute -right-4 -top-4 text-6xl opacity-10">🌍</div>
+          <p className="text-xs font-bold text-gray-400">TOTAL VEHICLES</p>
           <h3 className="text-4xl font-extrabold text-gray-800 mt-2">{total}</h3>
         </div>
+        
+        {/* Premium / Secrets Card */}
         <div className="bg-gradient-to-br from-orange-400 to-orange-600 p-6 rounded-2xl shadow-lg shadow-orange-200 text-white relative overflow-hidden">
            <div className="absolute -right-4 -top-4 text-6xl opacity-20">⭐</div>
-          <p className="text-sm font-bold text-orange-100">PREMIUM / SECRET</p>
+          <p className="text-xs font-bold text-orange-100">PREMIUM / SECRET</p>
           <h3 className="text-4xl font-extrabold mt-2">{premium + secrets}</h3>
         </div>
+        
+        {/* Total Bikes Card */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden">
-           <div className="absolute -right-4 -top-4 text-6xl opacity-10">🚲</div>
-          <p className="text-sm font-bold text-gray-400">TOTAL BIKES</p>
+           <div className="absolute -right-4 -top-4 text-6xl opacity-10">🏍️</div>
+          <p className="text-xs font-bold text-gray-400">TOTAL BIKES</p>
           <h3 className="text-4xl font-extrabold text-blue-600 mt-2">{bikes}</h3>
         </div>
+        
+        {/* Total Cars Card */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden">
            <div className="absolute -right-4 -top-4 text-6xl opacity-10">🚗</div>
-          <p className="text-sm font-bold text-gray-400">TOTAL CARS</p>
+          <p className="text-xs font-bold text-gray-400">TOTAL CARS</p>
           <h3 className="text-4xl font-extrabold text-green-600 mt-2">{cars}</h3>
         </div>
+
+        {/* ✅ NEW: Total Trucks Card */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden">
+           <div className="absolute -right-4 -top-4 text-6xl opacity-10">🚛</div>
+          <p className="text-xs font-bold text-gray-400">TOTAL TRUCKS</p>
+          <h3 className="text-4xl font-extrabold text-indigo-600 mt-2">{trucks}</h3>
+        </div>
+        
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
