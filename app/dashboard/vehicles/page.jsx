@@ -7,13 +7,15 @@ export default function VehiclesPage() {
   const [categories, setCategories] = useState([]);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('All');
+  const [editingOrder, setEditingOrder] = useState(null);
+  const [orderValue, setOrderValue] = useState(0);
 
   useEffect(() => { fetchVehicles(); fetchCategories(); }, []);
 
   const fetchVehicles = async () => {
     const res = await fetch('/api/vehicles');
     const data = await res.json();
-    if (data.success) setVehicles(data.data);
+    if (data.success) setVehicles(data.data.sort((a, b) => (a.order || 0) - (b.order || 0)));
   };
 
   const fetchCategories = async () => {
@@ -31,6 +33,16 @@ export default function VehiclesPage() {
     fetchVehicles();
   };
 
+  const updateOrder = async (id) => {
+    await fetch(`/api/vehicles/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order: orderValue })
+    });
+    setEditingOrder(null);
+    fetchVehicles();
+  };
+
   const deleteVehicle = async (id, name) => {
     if (confirm(`Are you sure you want to delete ${name}?`)) {
       await fetch(`/api/vehicles/${id}`, { method: 'DELETE' });
@@ -38,9 +50,9 @@ export default function VehiclesPage() {
     }
   };
 
-  const getCategoryDisplay = (catValue) => {
+  const getCategoryInfo = (catValue) => {
     const cat = categories.find(c => c.value === catValue);
-    return cat ? cat.name : catValue;
+    return cat || { name: catValue, icon: '📦' };
   };
 
   const filtered = vehicles.filter(v => {
@@ -60,7 +72,6 @@ export default function VehiclesPage() {
         </div>
       </div>
 
-      {/* Advanced Filters */}
       <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 mb-6 flex flex-col md:flex-row gap-4">
         <input type="text" placeholder="🔍 Search by name or code..." value={search} onChange={e => setSearch(e.target.value)}
           className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-orange-500 font-medium text-gray-700" />
@@ -68,16 +79,16 @@ export default function VehiclesPage() {
         <select value={filter} onChange={e => setFilter(e.target.value)} className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:outline-none font-bold text-gray-700 outline-none">
           <option value="All">🌍 All Categories</option>
           {categories.map(cat => (
-            <option key={cat.id} value={cat.value}>{cat.isActive ? '✅' : '🚫'} {cat.name}</option>
+            <option key={cat.id} value={cat.value}>{cat.icon || '📦'} {cat.name}</option>
           ))}
         </select>
       </div>
 
-      {/* Data Table */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
         <table className="w-full text-left whitespace-nowrap">
           <thead>
             <tr className="bg-gray-50 text-gray-500 text-sm uppercase tracking-wider">
+              <th className="p-4 border-b font-bold">Order</th>
               <th className="p-4 border-b font-bold">Vehicle</th>
               <th className="p-4 border-b font-bold">Cheat Code</th>
               <th className="p-4 border-b font-bold">Category</th>
@@ -86,42 +97,60 @@ export default function VehiclesPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {filtered.map(v => (
-              <tr key={v.id} className="hover:bg-gray-50 transition-colors">
-                <td className="p-4 flex items-center gap-4">
-                  <img src={v.imageUrl || 'https://via.placeholder.com/150'} className="w-14 h-14 rounded-xl object-cover shadow-sm bg-gray-200" />
-                  <span className="font-bold text-gray-800 text-lg">{v.name}</span>
-                </td>
-                <td className="p-4">
-                  <span className="font-mono bg-orange-50 text-orange-700 px-3 py-1.5 rounded-lg border border-orange-100 font-bold text-lg">
-                    {v.cheatCode}
-                  </span>
-                </td>
-                <td className="p-4 capitalize text-gray-600 font-medium">
-                  {getCategoryDisplay(v.category)}
-                </td>
-                <td className="p-4 flex gap-2">
-                  <button onClick={() => quickToggle(v.id, 'isVisible', v.isVisible)}
-                    className={`text-xs px-3 py-2 rounded-lg font-bold border transition-colors ${v.isVisible ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100' : 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'}`}>
-                    {v.isVisible ? '👁 VISIBLE' : '🚫 HIDDEN'}
-                  </button>
-                  <button onClick={() => quickToggle(v.id, 'isPremium', v.isPremium)}
-                    className={`text-xs px-3 py-2 rounded-lg font-bold border transition-colors ${v.isPremium ? 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100' : 'bg-gray-100 text-gray-500 border-gray-200 hover:bg-gray-200'}`}>
-                    {v.isPremium ? '⭐ PREMIUM' : '🆓 FREE'}
-                  </button>
-                </td>
-                <td className="p-4 text-right">
-                  <div className="flex justify-end gap-2">
-                    <Link href={`/dashboard/vehicles/edit/${v.id}`} className="text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-2 rounded-lg font-bold transition-colors">
-                      ✏️ Edit
-                    </Link>
-                    <button onClick={() => deleteVehicle(v.id, v.name)} className="text-red-600 bg-red-50 hover:bg-red-100 px-3 py-2 rounded-lg font-bold transition-colors">
-                      🗑️ Delete
+            {filtered.map(v => {
+              const catInfo = getCategoryInfo(v.category);
+              return (
+                <tr key={v.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="p-4">
+                    {editingOrder === v.id ? (
+                      <div className="flex items-center gap-1">
+                        <input type="number" value={orderValue} onChange={e => setOrderValue(parseInt(e.target.value) || 0)}
+                          className="w-16 border border-gray-300 p-1 rounded text-center text-sm font-bold" />
+                        <button onClick={() => updateOrder(v.id)} className="text-green-600 text-xs font-bold bg-green-50 px-2 py-1 rounded">✓</button>
+                        <button onClick={() => setEditingOrder(null)} className="text-red-600 text-xs font-bold bg-red-50 px-2 py-1 rounded">✕</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => { setEditingOrder(v.id); setOrderValue(v.order || 0); }}
+                        className="text-gray-600 font-mono text-sm bg-gray-100 px-3 py-1.5 rounded-lg hover:bg-gray-200 transition-colors">
+                        {v.order || 0}
+                      </button>
+                    )}
+                  </td>
+                  <td className="p-4 flex items-center gap-4">
+                    <img src={v.imageUrl || 'https://via.placeholder.com/150'} className="w-14 h-14 rounded-xl object-cover shadow-sm bg-gray-200" />
+                    <span className="font-bold text-gray-800 text-lg">{v.name}</span>
+                  </td>
+                  <td className="p-4">
+                    <span className="font-mono bg-orange-50 text-orange-700 px-3 py-1.5 rounded-lg border border-orange-100 font-bold text-lg">
+                      {v.cheatCode}
+                    </span>
+                  </td>
+                  <td className="p-4 font-medium">
+                    <span className="text-gray-600">{catInfo.icon} {catInfo.name}</span>
+                  </td>
+                  <td className="p-4 flex gap-2">
+                    <button onClick={() => quickToggle(v.id, 'isVisible', v.isVisible)}
+                      className={`text-xs px-3 py-2 rounded-lg font-bold border transition-colors ${v.isVisible ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100' : 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'}`}>
+                      {v.isVisible ? '👁 VISIBLE' : '🚫 HIDDEN'}
                     </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                    <button onClick={() => quickToggle(v.id, 'isPremium', v.isPremium)}
+                      className={`text-xs px-3 py-2 rounded-lg font-bold border transition-colors ${v.isPremium ? 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100' : 'bg-gray-100 text-gray-500 border-gray-200 hover:bg-gray-200'}`}>
+                      {v.isPremium ? '⭐ PREMIUM' : '🆓 FREE'}
+                    </button>
+                  </td>
+                  <td className="p-4 text-right">
+                    <div className="flex justify-end gap-2">
+                      <Link href={`/dashboard/vehicles/edit/${v.id}`} className="text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-2 rounded-lg font-bold transition-colors">
+                        ✏️ Edit
+                      </Link>
+                      <button onClick={() => deleteVehicle(v.id, v.name)} className="text-red-600 bg-red-50 hover:bg-red-100 px-3 py-2 rounded-lg font-bold transition-colors">
+                        🗑️ Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
         {filtered.length === 0 && <div className="p-12 text-center text-gray-400 font-medium">No vehicles found matching your search.</div>}
