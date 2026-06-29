@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { addVehicle } from '../../../../lib/db';
-import admin from '../../../../lib/firebase-admin';
+import { addVehicle } from '../../../../../lib/db';
+import admin from '../../../../../lib/firebase-admin';
 
 export async function POST(request, { params }) {
   try {
