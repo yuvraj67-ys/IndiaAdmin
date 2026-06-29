@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { addCategory } from '../../../lib/db';
+import { addCategory } from '../../../../lib/db';
 
 const DEFAULT_CATEGORIES = [
   { name: 'Bikes', value: 'bike', order: 1, icon: '🏍️' },
